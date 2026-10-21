@@ -41,9 +41,10 @@ func _build_bank(container: GridContainer, rows: Array) -> void:
 # Shows the current loadout of the complex.
 func open() -> void:
 	var missile_types = GlobalPantsirSystem.get_missile_types()
+	var missile_labels = missile_types.map(GlobalPantsirSystem.get_tube_load_label)
 	for tube_number in _tube_slots:
 		var slot = _tube_slots[tube_number]
-		slot.setup("ЗУР №%d" % tube_number, slot.Kind.MISSILE, missile_types)
+		slot.setup("ЗУР №%d" % tube_number, slot.Kind.MISSILE, missile_types, missile_labels)
 		var tube_index = tube_number - 1
 		var current = GlobalPantsirSystem.missile_tube_types[tube_index] if tube_index < GlobalPantsirSystem.missile_tube_types.size() else ""
 		slot.set_value(current)
@@ -71,16 +72,25 @@ func _set_all(loaded: bool) -> void:
 	_update_mass()
 
 func _update_mass() -> void:
-	var missiles = 0
+	var counts = {}
+	var mass = 0.0
 	for slot in _tube_slots.values():
-		if !slot.get_value().is_empty():
-			missiles += 1
+		var missile_type: String = slot.get_value()
+		if missile_type.is_empty():
+			continue
+		counts[missile_type] = counts.get(missile_type, 0) + GlobalPantsirSystem.get_missiles_per_tube(missile_type)
+		mass += GlobalPantsirSystem.get_tube_load_mass_kg(missile_type)
 	var rounds = 0
 	for slot in _gun_slots:
 		if !slot.get_value().is_empty():
 			rounds += GlobalPantsirSystem.GUN_ROUNDS_PER_BARREL * 2
-	var mass = missiles * GlobalPantsirSystem.get_missile_mass_kg() + rounds * GlobalPantsirSystem.GUN_ROUND_MASS_KG
-	_mass_label.text = "ЗУР: %d / %d    Снарядов: %d    Масса боекомплекта: %.1f кг" % [missiles, _tube_slots.size(), rounds, mass]
+	mass += rounds * GlobalPantsirSystem.GUN_ROUND_MASS_KG
+	var missile_parts = []
+	for missile_type in GlobalPantsirSystem.get_missile_types():
+		if counts.has(missile_type):
+			missile_parts.append("%s ×%d" % [missile_type, counts[missile_type]])
+	var missiles_text = ", ".join(missile_parts) if !missile_parts.is_empty() else "нет"
+	_mass_label.text = "ЗУР: %s    Снарядов: %d    Масса боекомплекта: %.1f кг" % [missiles_text, rounds, mass]
 
 func _on_apply_pressed() -> void:
 	var tube_types: Array[String] = []

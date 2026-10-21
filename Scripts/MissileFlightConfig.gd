@@ -91,6 +91,29 @@ class_name MissileFlightConfig
 @export var proximity_fuze_radius_m: float = 8.0
 @export var warhead_effect_radius_m: float = 15.0
 @export var fuze_arm_distance_m: float = 1.0
+# WT guidance.distanceProximityFuse: no fuze of its own; the complex sends the
+# detonation command once its tracks put the missile this close to the target.
+# 0 keeps the onboard proximity fuze.
+@export var command_detonation_range_m: float = 0.0
+
+@export_group("Fragmentation warhead")
+# WT damage.shatter: fragments thrown in cones around the missile axis. Each
+# segment is (from°, to°, share of fragments). Empty keeps the blast sphere of
+# warhead_effect_radius_m only.
+@export var warhead_fragment_count: int = 0
+@export var warhead_fragment_radius_m: float = 0.0
+@export var warhead_fragment_segments: PackedVector3Array = PackedVector3Array()
+
+func uses_command_detonation() -> bool:
+	return command_detonation_range_m > 0.0
+
+# Fragments per steradian at an angle from the missile axis.
+func fragment_density_per_sr(angle_deg: float) -> float:
+	for segment in warhead_fragment_segments:
+		if angle_deg >= segment.x and angle_deg <= segment.y:
+			var solid_angle = TAU * (cos(deg_to_rad(segment.x)) - cos(deg_to_rad(segment.y)))
+			return warhead_fragment_count * segment.z / maxf(solid_angle, 0.000001)
+	return 0.0
 
 func final_mass_kg() -> float:
 	return burnout_mass_kg

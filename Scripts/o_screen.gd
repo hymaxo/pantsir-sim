@@ -351,7 +351,9 @@ func draw_optic_view(r: Rect2):
 	if GlobalPantsirSystem.selected_weapon == "GUNS":
 		ammo_str = "ПШК-" + str(GlobalPantsirSystem.ammo_guns)
 	else:
-		ammo_str = "ЗУР-" + str(GlobalPantsirSystem.ammo_missiles)
+		# The small missile has its own counter prefix.
+		var missile_prefix = "ТКБ-" if GlobalPantsirSystem.selected_missile_type == GlobalPantsirSystem.MISSILE_TKB_1055 else "ЗУР-"
+		ammo_str = missile_prefix + str(GlobalPantsirSystem.ammo_missiles)
 
 	draw_string(default_font, Vector2(r.position.x + r.size.x - 10, r.position.y + 30), ammo_str, HORIZONTAL_ALIGNMENT_RIGHT, -1, font_size, COL_TEXT_GUI)
 	if GlobalPantsirSystem.locked_track_id != -1:
@@ -862,6 +864,11 @@ func draw_missile_bank(position: Vector2, rows: Array, launcher_arms: Array, slo
 			var loaded = GlobalPantsirSystem.is_missile_tube_loaded(slot_number)
 			draw_3d_panel(slot_rect, false, COL_BG_PANEL)
 			draw_string_centered(slot_rect, str(slot_number), Color.BLACK if loaded else Color.WHITE, 9)
+			# A ТКБ-1055 container shows how many of its four missiles are left.
+			var tube_type = GlobalPantsirSystem.get_missile_tube_type(slot_number)
+			if loaded and GlobalPantsirSystem.get_missiles_per_tube(tube_type) > 1:
+				var count_text = str(GlobalPantsirSystem.get_missile_tube_count(slot_number))
+				draw_string(default_font, slot_rect.position + Vector2(slot_rect.size.x - 6.0, slot_rect.size.y - 2.0), count_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(0.05, 0.15, 0.6))
 			if loaded and slot_number == selected_tube:
 				var diamond_center = slot_rect.get_center()
 				var diamond_radius = minf(slot_w, slot_h) * 0.43

@@ -199,9 +199,12 @@ func process_falling(delta):
 	velocity.x = move_toward(velocity.x, 0, 10.0 * delta)
 	velocity.z = move_toward(velocity.z, 0, 10.0 * delta)
 	
+	# Falling straight down the velocity is parallel to UP, where look_at has
+	# no defined roll; use another up axis then.
 	if velocity.length() > 1.0:
-		look_at(global_position + velocity, Vector3.UP)
-	
+		var up = Vector3.UP if absf(velocity.normalized().y) < 0.99 else Vector3.FORWARD
+		look_at(global_position + velocity, up)
+
 	move_and_slide()
 	
 

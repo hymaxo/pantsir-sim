@@ -182,6 +182,17 @@ anchor_bottom = 0.39
 theme_override_font_sizes/font_size = 14
 text = "ЗАПРОСИТЬ ПЕРЕЗАРЯДКУ"
 
+[node name="MissileSelectButton" type="Button" parent="Stations/CommanderSeat/ControlPanel"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.2877
+anchor_top = 0.395
+anchor_right = 0.8151
+anchor_bottom = 0.44
+tooltip_text = "Выбор ЗУР для следующего пуска"
+theme_override_font_sizes/font_size = 14
+text = "ЗУР: 95Я6"
+
 [node name="SpawnButtons" type="VBoxContainer" parent="Stations/CommanderSeat/ControlPanel"]
 layout_mode = 1
 anchor_left = 0.2877
@@ -208,6 +219,7 @@ unique_name_in_owner = true
 layout_mode = 1
 
 [connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/ReloadButton" to="." method="open_reload_menu"]
+[connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/MissileSelectButton" to="." method="select_next_missile_type"]
 [connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/Console/PowerButton" to="Stations/CommanderSeat/ControlPanel/Console/PowerButton" method="_on_pressed"]
 [connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/Console/AutoFireButton" to="Stations/CommanderSeat/ControlPanel/Console/AutoFireButton" method="_on_auto_fire_pressed"]
 [connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/Console/SectorRadarButton" to="Stations/CommanderSeat/ControlPanel/Console/SectorRadarButton" method="_on_button_soc_pressed"]

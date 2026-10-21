@@ -9,6 +9,9 @@ const SEA_LEVEL_TEMPERATURE_K: float = 288.15
 const TEMPERATURE_LAPSE_K_M: float = 0.0065
 const MIN_TEMPERATURE_K: float = 216.65
 const EPSILON: float = 0.000001
+# Area of a target that a single fragment must strike to disable it, for
+# targets that do not define their own vulnerable_area_m2.
+const DEFAULT_VULNERABLE_AREA_M2: float = 0.5
 
 @export var flight_config: MissileFlightConfig = preload("res://Resources/PantsirMissileFlightConfig.tres")
 @export var create_flight_visuals: bool = true
@@ -468,6 +471,9 @@ func has_fuze_target() -> bool:
 	return is_instance_valid(_fuze_target)
 
 func _check_continuous_proximity_fuze(start_position: Vector3) -> void:
+	# A command-detonated missile has no fuze; the complex triggers it.
+	if flight_config.uses_command_detonation():
+		return
 	if !is_instance_valid(_fuze_target):
 		_fuze_target = null
 		_have_fuze_history = false
@@ -525,12 +531,38 @@ func detonate() -> void:
 		_create_explosion_visual()
 	if is_inside_tree():
 		for target in get_tree().get_nodes_in_group("radar_targets"):
-			if !is_instance_valid(target):
+			if !is_instance_valid(target) or !target.has_method("take_damage"):
 				continue
-			if global_position.distance_to(target.global_position) <= flight_config.warhead_effect_radius_m and target.has_method("take_damage"):
+			if global_position.distance_to(target.global_position) <= flight_config.warhead_effect_radius_m or _fragments_hit(target):
 				# Preserve the simulator's existing 90% critical-hit damage model.
 				target.take_damage(randf() <= 0.9)
 		queue_free()
+
+# Detonation command from the complex (missiles without their own fuze).
+func command_detonate() -> void:
+	if distance_travelled_m >= flight_config.fuze_arm_distance_m:
+		detonate()
+
+# Fragments fly out in cones around the missile's direction of motion
+# relative to the target. Hits on the target's vulnerable area follow a
+# Poisson law: the cone's fragments per steradian spread over d².
+func _fragments_hit(target: Node3D) -> bool:
+	if flight_config.warhead_fragment_count <= 0:
+		return false
+	var offset = target.global_position - global_position
+	var distance = offset.length()
+	if distance > flight_config.warhead_fragment_radius_m:
+		return false
+	if distance < 0.5:
+		return true
+	var target_velocity: Vector3 = target.velocity if "velocity" in target else Vector3.ZERO
+	var axis = velocity - target_velocity
+	if axis.length_squared() <= EPSILON:
+		axis = body_forward_direction()
+	var angle_deg = rad_to_deg(acos(clampf(axis.normalized().dot(offset / distance), -1.0, 1.0)))
+	var area = float(target.vulnerable_area_m2) if "vulnerable_area_m2" in target else DEFAULT_VULNERABLE_AREA_M2
+	var expected_hits = flight_config.fragment_density_per_sr(angle_deg) * area / (distance * distance)
+	return randf() < 1.0 - exp(-expected_hits)
 
 func _create_explosion_visual() -> void:
 	var explosion = GPUParticles3D.new()

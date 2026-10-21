@@ -21,6 +21,11 @@ func _process(delta):
 	var reloading = GlobalPantsirSystem.is_reloading()
 	%ReloadButton.disabled = reloading
 	%ReloadButton.text = "ПЕРЕЗАРЯДКА… %d с" % ceili(GlobalPantsirSystem.reload_time_left_s) if reloading else RELOAD_BUTTON_TEXT
+	# Missile selector: cycles the complex's missile types; a single type
+	# (С1) leaves nothing to choose.
+	var missile_type = GlobalPantsirSystem.selected_missile_type
+	%MissileSelectButton.text = "ЗУР: %s (%d)" % [missile_type, GlobalPantsirSystem.get_missile_count(missile_type)]
+	%MissileSelectButton.disabled = GlobalPantsirSystem.get_missile_types().size() < 2 or GlobalPantsirSystem.is_missile_launch_preparing()
 	if audio_player and GlobalPantsirSystem.sound_play_required:
 		audio_player.pitch_scale = randf_range(0.9, 1.1)
 		audio_player.play()
@@ -40,6 +45,9 @@ func _unhandled_input(event):
 
 func open_reload_menu():
 	%ReloadMenu.open()
+
+func select_next_missile_type():
+	GlobalPantsirSystem.select_next_missile_type()
 
 func toggle_screens():
 	c_screen.visible = !c_screen.visible

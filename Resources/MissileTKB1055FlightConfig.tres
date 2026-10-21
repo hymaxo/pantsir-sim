@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="MissileFlightConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/MissileFlightConfig.gd" id="1_config"]
+
+[resource]
+script = ExtResource("1_config")
+launch_mass_kg = 18.0
+burnout_mass_kg = 12.5
+booster_mass_kg = 0.0
+thrust_newtons = 10120.0
+motor_burn_time_s = 1.25
+maximum_speed_mps = 820.0
+maximum_distance_m = 7000.0
+minimum_guidance_distance_m = 500.0
+guaranteed_range_m = 6300.0
+maximum_flight_time_s = 13.5
+maximum_load_factor_g = 40.0
+assembled_length_m = 2.0
+booster_caliber_m = 0.08
+body_caliber_m = 0.08
+body_length_m = 2.0
+body_reference_area_m2 = 0.005026548
+wing_area_multiplier = 1.25
+drag_coefficient_multiplier = 1.0
+sustainer_drag_calibration = 1.14
+fins_aoa_horizontal = 0.15
+fins_aoa_vertical = 0.15
+time_to_gain_0 = Vector2(0.2, 0)
+time_to_gain_1 = Vector2(0.3, 1)
+time_to_gain_2 = Vector2(0.3, 1)
+time_to_gain_3 = Vector2(0.3, 1)
+proximity_fuze_radius_m = 7.0
+warhead_effect_radius_m = 10.0
+fuze_arm_distance_m = 100.0

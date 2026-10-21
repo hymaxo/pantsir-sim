@@ -65,9 +65,8 @@ func _process(_delta):
 		queue_redraw()
 
 func _gui_input(event):
+	# With the power off the screen is dark (see _draw) and ignores input.
 	if !GlobalPantsirSystem.master_power_on:
-		draw_rect(Rect2(0,0, 2000, 2000),Color(0,0,0))
-		
 		return
 
 	if event is InputEventMouseButton:
@@ -214,9 +213,11 @@ func draw_radar_area(r: Rect2):
 		var sweep_end_1 = center + Vector2(sin(beam_ang), -cos(beam_ang)) * radius
 		draw_line(center, sweep_end_1, Color.ORANGE, 3.0)
 		
-		var beam_ang_2 = beam_ang + PI
-		var sweep_end_2 = center + Vector2(sin(beam_ang_2), -cos(beam_ang_2)) * radius
-		draw_line(center, sweep_end_2, Color.ORANGE, 3.0)
+		# The СМ antenna has a second beam opposite the first; the С1 has one.
+		if GlobalPantsirSystem.get_soc_beam_count() == 2:
+			var beam_ang_2 = beam_ang + PI
+			var sweep_end_2 = center + Vector2(sin(beam_ang_2), -cos(beam_ang_2)) * radius
+			draw_line(center, sweep_end_2, Color.ORANGE, 3.0)
 
 	if GlobalPantsirSystem.sector_radar_on:
 		var tur_ang = GlobalPantsirSystem.turret_current_angle

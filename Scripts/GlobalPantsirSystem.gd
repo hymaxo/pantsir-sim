@@ -54,6 +54,10 @@ var selected_weapon: String = "MISSILES"
 var sound_play_required: bool = false
 
 const SCAN_SPEED_RPM: float = 30.0
+const SOC_SINGLE_BEAM_SCAN_SPEED_RPM: float = 60.0
+# Beam angle at the previous СОЦ plot generation; a target is in the beam if
+# the beam swept over it since then, whatever the radar tick rate.
+var _soc_last_plot_angle: float = 0.0
 const TURRET_ROTATION_SPEED: float = 2.25
 const TURRET_PITCH_SPEED: float = 1.5
 const OPTIC_ROTATION_SPEED: float = 10.0 
@@ -91,6 +95,7 @@ const SOC_GATE_ELEVATION_RAD: float = deg_to_rad(5.0)
 const SOC_GATE_RANGE_M: float = 150.0
 const SOC_GATE_RANGE_GROWTH_MPS: float = 50.0
 const SOC_GATE_RADIAL_VELOCITY_MPS: float = 20.0
+const SOC_GATE_MAX_ANGLE_GROWTH_RAD: float = deg_to_rad(3.0)
 # A track seen once may have moved anywhere the fastest target could fly.
 const SOC_INITIATION_GATE_M: float = 300.0
 const SOC_INITIATION_MAX_SPEED_MPS: float = 1100.0
@@ -157,20 +162,36 @@ var missile_tubes_loaded: Array[bool] = [
 	true, true, true, true,
 	true, true, true, true,
 ]
-# Loadout chosen in the reload menu: missile type per tube ("" = empty) and
-# belt type per gun (two 2А38М twin cannons, two barrels each).
-const MISSILE_TYPES_BY_COMPLEX: Dictionary = {"S1": ["57Э6"], "SM": ["57Э6М"], "SM-SV": ["57Э6М"]}
+# Loadout chosen in the reload menu: missile type and count per tube ("" =
+# empty) and belt type per gun (two 2А38М twin cannons, two barrels each).
+# The С1 fires the 95Я6; the СМ the 40 km 95Я6М and the small ТКБ-1055, four
+# of which fit in one tube.
+const MISSILE_95YA6: String = "95Я6"
+const MISSILE_95YA6M: String = "95Я6М"
+const MISSILE_TKB_1055: String = "ТКБ-1055"
+const MISSILE_TYPES_BY_COMPLEX: Dictionary = {
+	"S1": [MISSILE_95YA6],
+	"SM": [MISSILE_95YA6M, MISSILE_TKB_1055],
+	"SM-SV": [MISSILE_95YA6M, MISSILE_TKB_1055],
+}
+const MISSILES_PER_TUBE: Dictionary = {MISSILE_TKB_1055: 4}
+# Loaded container mass where it differs from missiles × launch mass:
+# four ТКБ-1055 with their container weigh 115 kg.
+const TUBE_LOAD_MASS_KG: Dictionary = {MISSILE_TKB_1055: 115.0}
 const GUN_BELT_TYPES: Array[String] = ["30 мм ОФЗ-Т"]
 const GUN_ROUNDS_PER_BARREL: int = 300
 const GUN_ROUND_MASS_KG: float = 0.84
 var missile_tube_types: Array[String] = []
+var missile_tube_counts: Array[int] = []
 var gun_belt_types: Array[String] = []
-# Flight model per missile type. The С1 carries the older 57Э6 with a shorter
-# reach; the СМ keeps the full-range round.
+# Flight model per missile type, mapped from War Thunder data.
 const MISSILE_FLIGHT_CONFIGS: Dictionary = {
-	"57Э6": preload("res://Resources/Missile57E6FlightConfig.tres"),
-	"57Э6М": preload("res://Resources/PantsirMissileFlightConfig.tres"),
+	MISSILE_95YA6: preload("res://Resources/PantsirMissileFlightConfig.tres"),
+	MISSILE_95YA6M: preload("res://Resources/Missile95Ya6MFlightConfig.tres"),
+	MISSILE_TKB_1055: preload("res://Resources/MissileTKB1055FlightConfig.tres"),
 }
+# Missile type the operator fires; missile_flight_config follows it.
+var selected_missile_type: String = MISSILE_95YA6
 # A requested reload is carried out by the transport-loader; nothing can be
 # fired until it is done.
 const RELOAD_TIME_S: float = 30.0
@@ -238,6 +259,11 @@ const MRLS_TRACK_LOSS_TIME_S: float = 0.6
 # АС when MRLS_ACQUISITION_HITS_REQUIRED of the last N допоиск dwells found a
 # plot in the gate.
 const MRLS_ACQUISITION_WINDOW: int = 5
+# Agreement between допоиск hits: a few МРЛС range/velocity errors, plus what
+# a target's radial acceleration can change between dwells.
+const MRLS_CONFIRM_RANGE_TOLERANCE_M: float = 20.0
+const MRLS_CONFIRM_RADIAL_VELOCITY_TOLERANCE_MPS: float = 2.0
+const MRLS_CONFIRM_ACCELERATION_MPS2: float = 10.0
 
 # Millimetre-band МРЛС. Two targets merge into one plot only when they share a
 # resolution cell in angle, range and radial velocity at the same time.
@@ -253,6 +279,7 @@ const ACQUISITION_GATE_ELEVATION_RAD: float = deg_to_rad(3.0)
 const ACQUISITION_GATE_RANGE_M: float = 150.0
 const ACQUISITION_GATE_RANGE_GROWTH_MPS: float = 50.0
 const ACQUISITION_GATE_RADIAL_VELOCITY_MPS: float = 15.0
+const ACQUISITION_GATE_MAX_ANGLE_GROWTH_RAD: float = deg_to_rad(1.0)
 # Tracking gate around the precise МРЛС prediction (АС).
 const TRACK_GATE_ANGLE_RAD: float = deg_to_rad(0.2)
 const TRACK_GATE_MIN_LINEAR_M: float = 10.0
@@ -636,10 +663,17 @@ func _gate_center(uid: int, scan_time_s: float, precise: bool) -> Dictionary:
 	if precise:
 		return _to_radar_polar(predicted["position"], predicted["velocity"])
 	var track: Dictionary = tracks[uid]
+	var age = float(predicted["measurement_age_s"])
 	var designation = _to_radar_polar(track.get("measured_position", predicted["position"]), Vector3.ZERO)
 	designation["vr"] = float(track.get("radial_velocity", 0.0))
-	designation["range"] += designation["vr"] * float(predicted["measurement_age_s"])
-	designation["age_s"] = float(predicted["measurement_age_s"])
+	designation["range"] += designation["vr"] * age
+	designation["age_s"] = age
+	# The target moves across the beam while the designation ages: point the
+	# gate along the filter's prediction and widen it by its uncertainty.
+	var predicted_polar = _to_radar_polar(predicted["position"], Vector3.ZERO)
+	designation["az"] = predicted_polar["az"]
+	designation["el"] = predicted_polar["el"]
+	designation["angle_growth"] = _track_angle_uncertainty_rad(track, age, designation["range"], ACQUISITION_GATE_MAX_ANGLE_GROWTH_RAD)
 	return designation
 
 # Matches the pass's plots to track gates. Each gate takes its nearest plot
@@ -670,8 +704,8 @@ func _associate_mrls_plots(plots: Array) -> Dictionary:
 			state["next_dwell_s"] = _simulation_time_s + MRLS_ACQUISITION_DWELL_S
 			acquisition_dwells.append(uid)
 			gate = {
-				"az": ACQUISITION_GATE_AZIMUTH_RAD,
-				"el": ACQUISITION_GATE_ELEVATION_RAD,
+				"az": ACQUISITION_GATE_AZIMUTH_RAD + center.get("angle_growth", 0.0),
+				"el": ACQUISITION_GATE_ELEVATION_RAD + center.get("angle_growth", 0.0),
 				"range": ACQUISITION_GATE_RANGE_M + ACQUISITION_GATE_RANGE_GROWTH_MPS * center["age_s"],
 				"vr": ACQUISITION_GATE_RADIAL_VELOCITY_MPS,
 			}
@@ -703,11 +737,14 @@ func _associate_mrls_plots(plots: Array) -> Dictionary:
 	for uid in acquisition_dwells:
 		var state: Dictionary = _mrls_target_states[uid]
 		var history: Array = state.get("history", [])
-		history.append(assigned.has(uid))
+		var hit = {}
+		if assigned.has(uid):
+			hit = {"time_s": scan_time_s, "range": assigned[uid]["range"], "vr": assigned[uid]["vr"]}
+		history.append(hit)
 		if history.size() > MRLS_ACQUISITION_WINDOW:
 			history.pop_front()
 		state["history"] = history
-		state["hits"] = history.count(true)
+		state["hits"] = _consistent_hit_count(history)
 		if state["hits"] >= MRLS_ACQUISITION_HITS_REQUIRED:
 			state["precise"] = true
 			state["track_start_s"] = _simulation_time_s
@@ -719,6 +756,30 @@ func _associate_mrls_plots(plots: Array) -> Dictionary:
 			state["last_detection_s"] = _simulation_time_s
 			measurements[uid] = assigned[uid]
 	return measurements
+
+# Допоиск hits that belong to one target as the latest hit sees it: each
+# earlier hit's range, carried forward by its radial velocity, and its radial
+# velocity must agree with the latest one. A false alarm lands anywhere in
+# the gate and almost never agrees, so it cannot confirm a track on noise.
+func _consistent_hit_count(history: Array) -> int:
+	var latest: Dictionary = {}
+	for i in range(history.size() - 1, -1, -1):
+		if !history[i].is_empty():
+			latest = history[i]
+			break
+	if latest.is_empty():
+		return 0
+	var count = 0
+	for hit in history:
+		if hit.is_empty():
+			continue
+		var dt = float(latest["time_s"]) - float(hit["time_s"])
+		var predicted_range = float(hit["range"]) + 0.5 * (float(hit["vr"]) + float(latest["vr"])) * dt
+		var range_tolerance = MRLS_CONFIRM_RANGE_TOLERANCE_M + MRLS_CONFIRM_ACCELERATION_MPS2 * 0.5 * dt * dt
+		var vr_tolerance = MRLS_CONFIRM_RADIAL_VELOCITY_TOLERANCE_MPS + MRLS_CONFIRM_ACCELERATION_MPS2 * dt
+		if absf(predicted_range - float(latest["range"])) <= range_tolerance and absf(float(hit["vr"]) - float(latest["vr"])) <= vr_tolerance:
+			count += 1
+	return count
 
 func _mrls_measurement_variance(slant_range: float) -> float:
 	var sigma = maxf(slant_range * mrls_angle_sigma_rad, mrls_range_sigma_m)
@@ -1024,23 +1085,36 @@ func process_kinematics(delta):
 	optic_current_pitch = clamp(optic_current_pitch, deg_to_rad(-15), deg_to_rad(85))
 
 func process_search_radar(delta):
-	var speed_rad = (SCAN_SPEED_RPM * TAU) / 60.0
+	var speed_rad = (get_soc_scan_speed_rpm() * TAU) / 60.0
 	search_radar_angle += speed_rad * delta
 	if search_radar_angle > TAU: search_radar_angle -= TAU
 	_soc_sector_rotation_rad += speed_rad * delta
-	if _soc_sector_rotation_rad >= PI:
-		_soc_sector_rotation_rad -= PI
+	var sweep_rad = _soc_full_sweep_rad()
+	if _soc_sector_rotation_rad >= sweep_rad:
+		_soc_sector_rotation_rad -= sweep_rad
 		if !soc_sectors.is_empty():
 			soc_current_sector = (soc_current_sector + 1) % soc_sectors.size()
 
-# Time for the СОЦ to look at every direction once: one half turn per
-# elevation sector.
+# The СМ antenna has two beams back to back at 30 rpm; the С1 a single beam
+# at 60 rpm (360°/s). Either way every azimuth is seen once a second.
+func get_soc_beam_count() -> int:
+	return 1 if uses_soc_sector_scan() else 2
+
+func get_soc_scan_speed_rpm() -> float:
+	return SOC_SINGLE_BEAM_SCAN_SPEED_RPM if get_soc_beam_count() == 1 else SCAN_SPEED_RPM
+
+# Antenna rotation in which the beams together cover the full azimuth.
+func _soc_full_sweep_rad() -> float:
+	return TAU / get_soc_beam_count()
+
+# Time for the СОЦ to look at every direction once: one full azimuth sweep
+# per elevation sector.
 func get_soc_revisit_s() -> float:
-	return 30.0 / SCAN_SPEED_RPM * maxf(soc_sectors.size(), 1)
+	return 60.0 / get_soc_scan_speed_rpm() / get_soc_beam_count() * maxf(soc_sectors.size(), 1)
 
 # Fraction of the current sector already swept.
 func get_soc_sector_progress() -> float:
-	return _soc_sector_rotation_rad / PI
+	return _soc_sector_rotation_rad / _soc_full_sweep_rad()
 
 func uses_soc_sector_scan() -> bool:
 	return GameSettings.selected_complex == "S1"
@@ -1227,13 +1301,22 @@ func _generate_soc_plots() -> Array:
 	for uid in _soc_passes.keys():
 		if _simulation_time_s - float(_soc_passes[uid]["time_s"]) > 2.0:
 			_soc_passes.erase(uid)
+	# Arc the beam centre has swept since the previous plot generation. Each
+	# target is painted once per pass, when the centre crosses its azimuth;
+	# the half-open arcs of successive ticks never overlap.
+	var sweep = fposmod(search_radar_angle - _soc_last_plot_angle, TAU)
+	if sweep > _soc_full_sweep_rad():
+		sweep = 0.0
+	var sweep_start = _soc_last_plot_angle
+	_soc_last_plot_angle = search_radar_angle
 	var echoes = []
 	for t_data in targets:
 		var polar = _to_radar_polar(t_data["position"], t_data.get("velocity", Vector3.ZERO))
-		var in_beam = (
-			absf(angle_difference(search_radar_angle, polar["az"])) < BEAM_WIDTH_RAD / 2.0
-			or absf(angle_difference(search_radar_angle + PI, polar["az"])) < BEAM_WIDTH_RAD / 2.0
-		)
+		var in_beam = false
+		for beam in range(get_soc_beam_count()):
+			var beam_start = sweep_start + _soc_full_sweep_rad() * beam
+			if fposmod(polar["az"] - beam_start, TAU) < sweep:
+				in_beam = true
 		if !in_beam or !_soc_sector_covers(polar["el"]) or !_soc_detects(t_data):
 			continue
 		polar["rcs"] = float(t_data.get("rcs_m2", 0.0))
@@ -1281,6 +1364,14 @@ func _merge_echoes(echoes: Array, azimuth_cell: float, elevation_cell: float, ra
 			plots.append(echo)
 	return plots
 
+# Angle the track's prediction may be off after `age` seconds: 3σ of the
+# filter's velocity error over that time, seen at the target's range, up to
+# `limit`. Gates must stay small: every extra resolution cell is another
+# chance of a false alarm, and salvo rockets fly close behind each other.
+func _track_angle_uncertainty_rad(track: Dictionary, age: float, slant_range: float, limit: float) -> float:
+	var velocity_sigma = sqrt(maxf(float(track.get("kalman_velocity_variance", 0.0)), 0.0))
+	return minf(3.0 * velocity_sigma * age / maxf(slant_range, 1.0), limit)
+
 # Matches СОЦ plots to tracks, nearest pairs first. A track seen once has no
 # velocity yet, so its gate is everything the fastest target could reach
 # since that plot; older tracks use the filter's prediction. Precise tracks
@@ -1296,7 +1387,18 @@ func _associate_soc_plots(plots: Array, scan_time_s: float) -> Dictionary:
 		var age = float(predicted["measurement_age_s"])
 		var center = _to_radar_polar(predicted["position"], predicted["velocity"])
 		center["vr"] = float(track.get("radial_velocity", center["vr"]))
-		var initiation = int(track.get("hits", 0)) < 2 and !is_track_precise(track_id)
+		var precise = is_track_precise(track_id)
+		var initiation = int(track.get("hits", 0)) < 2 and !precise
+		var azimuth_gate = SOC_GATE_AZIMUTH_RAD
+		var elevation_gate = SOC_GATE_ELEVATION_RAD
+		if !precise:
+			# A young СОЦ track has a poor velocity estimate (plots off by hundreds
+			# of metres), so its range is carried by the measured radial velocity,
+			# and the angle gates grow with the filter's velocity uncertainty.
+			center["range"] = _to_radar_polar(track["measured_position"], Vector3.ZERO)["range"] + center["vr"] * age
+			var angle_growth = _track_angle_uncertainty_rad(track, age, center["range"], SOC_GATE_MAX_ANGLE_GROWTH_RAD)
+			azimuth_gate += angle_growth
+			elevation_gate += angle_growth
 		for plot in plots:
 			var d_vr = (plot["vr"] - center["vr"]) / SOC_GATE_RADIAL_VELOCITY_MPS
 			var distance: float
@@ -1310,8 +1412,8 @@ func _associate_soc_plots(plots: Array, scan_time_s: float) -> Dictionary:
 					continue
 				distance = d_position * d_position + d_vr * d_vr
 			else:
-				var d_az = angle_difference(center["az"], plot["az"]) / SOC_GATE_AZIMUTH_RAD
-				var d_el = (plot["el"] - center["el"]) / SOC_GATE_ELEVATION_RAD
+				var d_az = angle_difference(center["az"], plot["az"]) / azimuth_gate
+				var d_el = (plot["el"] - center["el"]) / elevation_gate
 				var d_range = (plot["range"] - center["range"]) / (SOC_GATE_RANGE_M + SOC_GATE_RANGE_GROWTH_MPS * age)
 				if absf(d_az) > 1.0 or absf(d_el) > 1.0 or absf(d_range) > 1.0 or absf(d_vr) > 1.0:
 					continue
@@ -1443,6 +1545,9 @@ func process_missile_guidance(delta):
 			var missile_prediction_time = maxf(_simulation_time_s - channel["missile_measurement_timestamp"], 0.0)
 			missile_position = missile_filter.predicted_position(missile_prediction_time)
 			missile_velocity = missile_filter.velocity
+		if _should_command_detonate(missile, missile_position, missile_velocity, target_position, target_velocity, delta):
+			missile.command_detonate()
+			continue
 		var origin = pantsir_position + launcher_offset
 
 		var raw_los_rate = MissileGuidance.line_of_sight_rate(origin, target_position, target_velocity)
@@ -1479,6 +1584,26 @@ func process_missile_guidance(delta):
 		channel["last_command"] = command
 		missile.update_guidance_acceleration(command, channel["guidance_mode"])
 		guidance_channels[i] = channel
+
+# Command detonation (95Я6М): judged only from the complex's own missile and
+# target tracks. Fires once the estimated miss distance is inside the
+# detonation range, or when the closest approach falls within this tick and
+# would be inside it.
+func _should_command_detonate(missile: PantsirMissile, missile_position: Vector3, missile_velocity: Vector3, target_position: Vector3, target_velocity: Vector3, delta: float) -> bool:
+	var config: MissileFlightConfig = missile.flight_config
+	if !config.uses_command_detonation():
+		return false
+	var offset = target_position - missile_position
+	if offset.length() <= config.command_detonation_range_m:
+		return true
+	var closing_velocity = target_velocity - missile_velocity
+	var closing_speed_sq = closing_velocity.length_squared()
+	if closing_speed_sq <= 0.000001:
+		return false
+	var time_to_closest = -offset.dot(closing_velocity) / closing_speed_sq
+	if time_to_closest < 0.0 or time_to_closest > delta:
+		return false
+	return (offset + closing_velocity * time_to_closest).length() <= config.command_detonation_range_m
 
 # One capture attempt. The missile must be inside the МРЛС sector.
 func _try_capture_missile(channel: Dictionary, missile: PantsirMissile) -> bool:
@@ -1670,6 +1795,7 @@ func reset_simulation() -> void:
 	_pending_loadout = {}
 	soc_current_sector = 0
 	_soc_sector_rotation_rad = 0.0
+	_soc_last_plot_angle = 0.0
 
 func select_weapon_guns(): selected_weapon = "GUNS"
 func select_weapon_missiles(): selected_weapon = "MISSILES"
@@ -1724,7 +1850,7 @@ func fire_missile_logic():
 			break
 	if free_channel_idx == -1: return
 
-	if _selected_missile_tube_index < 0 or !missile_tubes_loaded[_selected_missile_tube_index]:
+	if _selected_missile_tube_index < 0 or !_tube_holds(_selected_missile_tube_index, selected_missile_type):
 		_select_next_missile_tube()
 	if _selected_missile_tube_index < 0: return
 
@@ -1734,6 +1860,7 @@ func fire_missile_logic():
 		"launcher_arm": launcher_arm,
 		"channel_index": free_channel_idx,
 		"target_id": locked_track_id,
+		"missile_type": selected_missile_type,
 	}
 	_missile_arm_raise_timer = MISSILE_ARM_RAISE_TIME
 	# Count preparation as part of the existing two-second launch interval.
@@ -1750,33 +1877,91 @@ func process_pending_missile_launch(delta: float) -> void:
 	var launcher_arm: int = _pending_missile_launch["launcher_arm"]
 	var channel_index: int = _pending_missile_launch["channel_index"]
 	var target_id: int = _pending_missile_launch["target_id"]
+	var missile_type: String = _pending_missile_launch["missile_type"]
 	_pending_missile_launch = {}
 
-	if tube_index < 0 or tube_index >= missile_tubes_loaded.size() or !missile_tubes_loaded[tube_index]:
+	if tube_index < 0 or tube_index >= missile_tubes_loaded.size() or !_tube_holds(tube_index, missile_type):
 		_select_next_missile_tube()
 		return
 	if channel_index < 0 or channel_index >= guidance_channels.size() or guidance_channels[channel_index] != null:
 		_select_next_missile_tube()
 		return
 
-	spawn_projectile(missile_scene, true, channel_index, launcher_arm, target_id)
+	spawn_projectile(missile_scene, true, channel_index, launcher_arm, target_id, missile_type)
 	last_missile_launch_time_s = _simulation_time_s
-	missile_tubes_loaded[tube_index] = false
-	if tube_index < missile_tube_types.size():
+	# A ТКБ-1055 container empties one missile at a time.
+	missile_tube_counts[tube_index] -= 1
+	if missile_tube_counts[tube_index] <= 0:
+		missile_tube_counts[tube_index] = 0
 		missile_tube_types[tube_index] = ""
-	ammo_missiles = _count_loaded_missile_tubes()
+		missile_tubes_loaded[tube_index] = false
+	ammo_missiles = get_missile_count(selected_missile_type)
 	sound_play_required = true
 	_selected_missile_tube_index = -1
 	_select_next_missile_tube()
 
-# Missile types the selected complex can carry (one each for now).
+# Missile types the selected complex can carry.
 func get_missile_types() -> Array:
 	return MISSILE_TYPES_BY_COMPLEX.get(GameSettings.selected_complex, MISSILE_TYPES_BY_COMPLEX["SM"])
 
-# Full standard loadout for the selected complex; also selects its missile
-# flight model and СОЦ elevation scan.
+func get_missiles_per_tube(missile_type: String) -> int:
+	return MISSILES_PER_TUBE.get(missile_type, 1)
+
+# Name for menus: a ТКБ-1055 container is shown as four missiles.
+func get_tube_load_label(missile_type: String) -> String:
+	var count = get_missiles_per_tube(missile_type)
+	return missile_type if count == 1 else "%d× %s" % [count, missile_type]
+
+func get_missile_count(missile_type: String) -> int:
+	var count = 0
+	for i in range(missile_tube_types.size()):
+		if missile_tube_types[i] == missile_type:
+			count += missile_tube_counts[i]
+	return count
+
+func get_total_missile_count() -> int:
+	var count = 0
+	for tube_count in missile_tube_counts:
+		count += tube_count
+	return count
+
+func get_missile_tube_type(tube_number: int) -> String:
+	var tube_index = tube_number - 1
+	return missile_tube_types[tube_index] if tube_index >= 0 and tube_index < missile_tube_types.size() else ""
+
+func get_missile_tube_count(tube_number: int) -> int:
+	var tube_index = tube_number - 1
+	return missile_tube_counts[tube_index] if tube_index >= 0 and tube_index < missile_tube_counts.size() else 0
+
+func _tube_holds(tube_index: int, missile_type: String) -> bool:
+	return (
+		tube_index >= 0 and tube_index < missile_tube_types.size()
+		and missile_tube_types[tube_index] == missile_type
+		and missile_tube_counts[tube_index] > 0
+	)
+
+# Selector (ВЫБОР ЗУР): the type to fire next. Its flight model drives the
+# launch zone, launch permission and the launcher lead. Not changed while a
+# launch is being prepared.
+func select_missile_type(missile_type: String) -> void:
+	if is_missile_launch_preparing() or !MISSILE_FLIGHT_CONFIGS.has(missile_type):
+		return
+	selected_missile_type = missile_type
+	missile_flight_config = MISSILE_FLIGHT_CONFIGS[missile_type]
+	ammo_missiles = get_missile_count(missile_type)
+	_selected_missile_tube_index = -1
+	_select_next_missile_tube()
+
+func select_next_missile_type() -> void:
+	var types = get_missile_types()
+	var index = types.find(selected_missile_type)
+	select_missile_type(types[(index + 1) % types.size()])
+
+# Full standard loadout for the selected complex; also selects its first
+# missile type and the СОЦ elevation scan.
 func load_default_loadout() -> void:
-	missile_flight_config = MISSILE_FLIGHT_CONFIGS.get(get_missile_types()[0], missile_flight_config)
+	selected_missile_type = get_missile_types()[0]
+	missile_flight_config = MISSILE_FLIGHT_CONFIGS[selected_missile_type]
 	_update_soc_sectors()
 	var tube_types: Array[String] = []
 	for i in range(missile_tubes_loaded.size()):
@@ -1791,11 +1976,13 @@ func apply_loadout(tube_types: Array, belt_types: Array) -> bool:
 	if is_missile_launch_preparing():
 		return false
 	missile_tube_types.clear()
+	missile_tube_counts.clear()
 	for i in range(missile_tubes_loaded.size()):
 		var tube_type: String = tube_types[i] if i < tube_types.size() else ""
 		missile_tube_types.append(tube_type)
+		missile_tube_counts.append(0 if tube_type.is_empty() else get_missiles_per_tube(tube_type))
 		missile_tubes_loaded[i] = !tube_type.is_empty()
-	ammo_missiles = _count_loaded_missile_tubes()
+	ammo_missiles = get_missile_count(selected_missile_type)
 	_selected_missile_tube_index = -1
 	_select_next_missile_tube()
 	gun_belt_types.clear()
@@ -1828,27 +2015,26 @@ func _process_reload(delta: float) -> void:
 		apply_loadout(_pending_loadout["tubes"], _pending_loadout["belts"])
 		_pending_loadout = {}
 
-func get_missile_mass_kg() -> float:
-	return missile_flight_config.launch_mass_kg
+# Mass of one loaded tube of this type.
+func get_tube_load_mass_kg(missile_type: String) -> float:
+	if missile_type.is_empty():
+		return 0.0
+	if TUBE_LOAD_MASS_KG.has(missile_type):
+		return TUBE_LOAD_MASS_KG[missile_type]
+	return MISSILE_FLIGHT_CONFIGS[missile_type].launch_mass_kg * get_missiles_per_tube(missile_type)
 
 func _cancel_pending_missile_launch() -> void:
 	_pending_missile_launch = {}
 	_missile_arm_raise_timer = 0.0
 
-func _count_loaded_missile_tubes() -> int:
-	var loaded_count = 0
-	for loaded in missile_tubes_loaded:
-		if loaded:
-			loaded_count += 1
-	return loaded_count
-
+# Missiles of the selected type left on one launcher arm.
 func _count_loaded_tubes_on_arm(launcher_arm: int) -> int:
 	if launcher_arm < 0 or launcher_arm >= LAUNCHER_ARM_TUBES.size():
 		return 0
 	var loaded_count = 0
 	for tube_index in LAUNCHER_ARM_TUBES[launcher_arm]:
-		if missile_tubes_loaded[tube_index]:
-			loaded_count += 1
+		if _tube_holds(tube_index, selected_missile_type):
+			loaded_count += missile_tube_counts[tube_index]
 	return loaded_count
 
 func _select_next_missile_tube() -> void:
@@ -1866,7 +2052,7 @@ func _select_next_missile_tube() -> void:
 		if _count_loaded_tubes_on_arm(launcher_arm) != maximum_remaining:
 			continue
 		for tube_index in LAUNCHER_ARM_TUBES[launcher_arm]:
-			if missile_tubes_loaded[tube_index]:
+			if _tube_holds(tube_index, selected_missile_type):
 				_selected_missile_tube_index = tube_index
 				_next_launcher_arm_cursor = (launcher_arm + 1) % LAUNCHER_ARM_TUBES.size()
 				return
@@ -1921,13 +2107,13 @@ func fire_guns_logic():
 	for barrel_ammo in gun_ammo_by_barrel:
 		ammo_guns += barrel_ammo
 
-func spawn_projectile(scene, is_missile, channel_idx = -1, launcher_arm: int = -1, target_id: int = -1):
+func spawn_projectile(scene, is_missile, channel_idx = -1, launcher_arm: int = -1, target_id: int = -1, missile_type: String = ""):
 	var world = get_tree().current_scene.find_child("SimulationCore")
 	if !world: world = get_tree().root
-	
+
 	var inst = scene.instantiate()
 	if is_missile:
-		inst.flight_config = missile_flight_config
+		inst.flight_config = MISSILE_FLIGHT_CONFIGS.get(missile_type, missile_flight_config)
 	inst.rotation.y = -turret_current_angle
 	inst.rotation.x = turret_current_pitch
 	world.add_child(inst)

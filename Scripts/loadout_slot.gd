@@ -22,15 +22,16 @@ func _ready() -> void:
 	_icon.draw.connect(_draw_icon)
 	_choice.item_selected.connect(func(_index): _icon.queue_redraw(); changed.emit())
 
-func setup(title: String, slot_kind: int, types: Array) -> void:
+# labels, when given, are shown instead of the munition names.
+func setup(title: String, slot_kind: int, types: Array, labels: Array = []) -> void:
 	kind = slot_kind
 	_title.text = title
 	_values = [""]
 	_choice.clear()
 	_choice.add_item(EMPTY_LABEL)
-	for munition in types:
-		_values.append(munition)
-		_choice.add_item(munition)
+	for i in range(types.size()):
+		_values.append(types[i])
+		_choice.add_item(labels[i] if i < labels.size() else types[i])
 	_icon.queue_redraw()
 
 func get_value() -> String:
@@ -52,6 +53,11 @@ func _draw_icon() -> void:
 	if kind == Kind.MISSILE:
 		# Canister seen from the front: rim, missile nose and a crosshair.
 		_icon.draw_arc(center, radius, 0.0, TAU, 32, COL_ICON, 2.0, true)
+		if GlobalPantsirSystem.get_missiles_per_tube(get_value()) > 1:
+			# Container of small missiles: one nose per missile.
+			for angle in [PI * 0.25, PI * 0.75, PI * 1.25, PI * 1.75]:
+				_icon.draw_circle(center + Vector2(cos(angle), sin(angle)) * radius * 0.45, radius * 0.24, COL_ICON)
+			return
 		_icon.draw_circle(center, radius * 0.35, COL_ICON)
 		for angle in [0.0, PI * 0.5, PI, PI * 1.5]:
 			var direction = Vector2(cos(angle), sin(angle))

@@ -4,7 +4,7 @@
 
 A prototype simulator of the crew workstation of a Pantsir air-defence missile and gun system, built with Godot 4. It models detection and tracking of air targets, switching between the commander's and the operator's screens, laying, guided missile launches and gun fire.
 
-Current version: `1.0.0`.
+Current version: `1.1.0`.
 
 > This is a game / research simulation. System parameters and behaviour are approximate and do not claim to reproduce the real system accurately.
 
@@ -16,14 +16,15 @@ Ready builds for Windows and Linux are on the [Releases](https://github.com/hyma
 
 - main menu with complex selection (Pantsir-S1, Pantsir-SM; SM-SV is work in progress) and window settings;
 - search radar (СОЦ) with a rotating beam, measurement errors, radial velocity, ground clutter and an R⁴ detection range driven by target RCS;
-- S1 only: elevation sector scan — the radar picks the number of sectors from the upper boundary and the missile's maximum range;
+- S1: a single search radar beam (60 rpm) and an elevation sector scan — the radar picks the number of sectors from the upper boundary and the missile's maximum range; SM: two back-to-back beams (30 rpm), no sectors;
 - СПЗ "Manual settings" window: speed limit, lower height and angle boundary, RCS threshold (saved between launches);
 - tracking radar (МРЛС) with acquisition (3 of 5 detections) and automatic tracking (ДПЦ → АС);
 - commander's screen with the radar picture and the target table;
 - operator's screen with a thermal sight, engagement zone and guidance channels;
-- 6DOF missile model with command guidance (П-РЛ → ЦУ); 57E6 missiles on the S1, 57E6M on the SM;
+- 6DOF missile model with command guidance (П-РЛ → ЦУ), from War Thunder data: 95Ya6 on the S1 (20 km); on the SM the 95Ya6M (40 km, 1700 m/s, no fuze — detonated on the complex's command, forward-directed fragments) and the small TKB-1055 (7 km, four per container in place of one 95Ya6M);
+- missile selector for the next launch — the button under «Запросить перезарядку»;
 - guns with lead calculation and an automatic fire mode (АО / АВТ-П);
-- reload request: choose the load per tube and gun, 30 s with no firing;
+- reload request: choose the load per tube and gun (on the SM a tube takes a 95Ya6M or a 4× TKB-1055 container), 30 s with no firing;
 - procedural 80×80 km terrain with forest that attenuates radar signals;
 - targets: drone, terrain-following cruise missile, MLRS salvo;
 - Linux and Windows export, automatic release builds with GitHub Actions.
@@ -161,7 +162,7 @@ All distances are in nominal metres.
 | Parameter | Current value | Where to change |
 |---|---:|---|
 | Initial display range | 30 000 | `GlobalPantsirSystem.MAX_RANGE` |
-| Search radar speed | 30 rpm | `SCAN_SPEED_RPM` |
+| Search radar speed | 30 rpm, 2 beams (SM) / 60 rpm, 1 beam (S1) | `SCAN_SPEED_RPM`, `SOC_SINGLE_BEAM_SCAN_SPEED_RPM` |
 | Search radar beam width | 6° | `BEAM_WIDTH_RAD` |
 | Sector tracking limit | ±45° | `SECTOR_WIDTH_RAD` |
 | Track lifetime without updates | 5 s (S1: at least 2.5 scan cycles) | `TRACK_DECAY_TIME` |
@@ -172,9 +173,9 @@ All distances are in nominal metres.
 | Arm preparation before launch | 1 s | `MISSILE_ARM_RAISE_TIME` |
 | Interval between launches | 2 s | `MISSILE_COOLDOWN_TIME` |
 | Missile guidance channels | 4 | `guidance_channels` |
-| Missile top speed | 1300 m/s (57E6M) / 1100 m/s (57E6) | `MissileFlightConfig.maximum_speed_mps` |
-| Missile maximum range | 20 000 m (57E6M) / 18 000 m (57E6) | `MissileFlightConfig.maximum_distance_m` |
-| Missile lifetime | 30 s (57E6M) / 24 s (57E6) | `MissileFlightConfig.maximum_flight_time_s` |
+| Missile top speed | 1300 m/s (95Ya6) / 1700 m/s (95Ya6M) / 820 m/s (TKB-1055) | `MissileFlightConfig.maximum_speed_mps` |
+| Missile maximum range | 20 000 m (95Ya6) / 40 000 m (95Ya6M) / 7000 m (TKB-1055) | `MissileFlightConfig.maximum_distance_m` |
+| Missile lifetime | 30 s (95Ya6) / 35 s (95Ya6M) / 13.5 s (TKB-1055) | `MissileFlightConfig.maximum_flight_time_s` |
 | Reload time | 30 s | `RELOAD_TIME_S` |
 
 ## Adding a new target type
@@ -225,8 +226,8 @@ On every push to `main` and every pull request, the `.github/workflows/build.yml
 A release is made by pushing a version tag:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 The workflow builds `PantsirSim-<version>-windows.zip` and `PantsirSim-<version>-linux.zip` and publishes them as a GitHub Release, with notes from `.github/release-notes/<tag>.md`. Before tagging, update `config/version` in `project.godot`, the versions in `export_presets.cfg`, and add the release notes file.

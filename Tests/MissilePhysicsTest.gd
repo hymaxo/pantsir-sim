@@ -49,22 +49,48 @@ func _new_test_missile() -> PantsirMissile:
 
 func _test_launcher_arm_selection() -> void:
 	var saved_tubes = GlobalPantsirSystem.missile_tubes_loaded.duplicate()
+	var saved_types = GlobalPantsirSystem.missile_tube_types.duplicate()
+	var saved_counts = GlobalPantsirSystem.missile_tube_counts.duplicate()
+	var saved_type = GlobalPantsirSystem.selected_missile_type
 	var saved_cursor = GlobalPantsirSystem._next_launcher_arm_cursor
 	var saved_selection = GlobalPantsirSystem._selected_missile_tube_index
 	var saved_pending = GlobalPantsirSystem._pending_missile_launch.duplicate()
 
-	GlobalPantsirSystem.missile_tubes_loaded.fill(true)
+	var missile_type = GlobalPantsirSystem.MISSILE_95YA6
+	var full_load: Array[String] = []
+	full_load.resize(12)
+	full_load.fill(missile_type)
+	# Guns stay fully loaded, as they are before this test.
+	var full_belts: Array[String] = [GlobalPantsirSystem.GUN_BELT_TYPES[0], GlobalPantsirSystem.GUN_BELT_TYPES[0]]
+	GlobalPantsirSystem._pending_missile_launch = {}
+	GlobalPantsirSystem.select_missile_type(missile_type)
+	GlobalPantsirSystem.apply_loadout(full_load, full_belts)
 	GlobalPantsirSystem._next_launcher_arm_cursor = 0
 	GlobalPantsirSystem._selected_missile_tube_index = -1
-	GlobalPantsirSystem._pending_missile_launch = {}
 	for expected_tube in range(1, 13):
 		GlobalPantsirSystem._select_next_missile_tube()
 		_assert(
 			GlobalPantsirSystem.get_selected_missile_tube_number() == expected_tube,
 			"launcher load balancing selected tube %d instead of %d" % [GlobalPantsirSystem.get_selected_missile_tube_number(), expected_tube]
 		)
+		GlobalPantsirSystem.missile_tube_counts[expected_tube - 1] = 0
+		GlobalPantsirSystem.missile_tube_types[expected_tube - 1] = ""
 		GlobalPantsirSystem.missile_tubes_loaded[expected_tube - 1] = false
 		GlobalPantsirSystem._selected_missile_tube_index = -1
+
+	# A ТКБ-1055 container holds four missiles; only tubes of the selected
+	# type are offered.
+	var mixed_load: Array[String] = []
+	mixed_load.resize(12)
+	mixed_load.fill("")
+	mixed_load[0] = GlobalPantsirSystem.MISSILE_95YA6M
+	mixed_load[5] = GlobalPantsirSystem.MISSILE_TKB_1055
+	GlobalPantsirSystem.apply_loadout(mixed_load, full_belts)
+	GlobalPantsirSystem.select_missile_type(GlobalPantsirSystem.MISSILE_TKB_1055)
+	_assert(GlobalPantsirSystem.get_missile_count(GlobalPantsirSystem.MISSILE_TKB_1055) == 4, "ТКБ-1055 container does not hold four missiles")
+	_assert(GlobalPantsirSystem.get_selected_missile_tube_number() == 6, "ТКБ-1055 selection picked tube %d instead of 6" % GlobalPantsirSystem.get_selected_missile_tube_number())
+	GlobalPantsirSystem.select_missile_type(GlobalPantsirSystem.MISSILE_95YA6M)
+	_assert(GlobalPantsirSystem.get_selected_missile_tube_number() == 1, "95Я6М selection picked tube %d instead of 1" % GlobalPantsirSystem.get_selected_missile_tube_number())
 
 	GlobalPantsirSystem._pending_missile_launch = {"launcher_arm": 0}
 	_assert(GlobalPantsirSystem.is_launcher_arm_raised(0), "left outer arm did not rise")
@@ -79,6 +105,10 @@ func _test_launcher_arm_selection() -> void:
 	_assert(GlobalPantsirSystem.LAUNCHER_ARM_LATERAL_OFFSETS_M[3] > 0.0, "right launcher offset is not right of the sight")
 
 	GlobalPantsirSystem.missile_tubes_loaded.assign(saved_tubes)
+	GlobalPantsirSystem.missile_tube_types.assign(saved_types)
+	GlobalPantsirSystem.missile_tube_counts.assign(saved_counts)
+	GlobalPantsirSystem._pending_missile_launch = {}
+	GlobalPantsirSystem.select_missile_type(saved_type)
 	GlobalPantsirSystem._next_launcher_arm_cursor = saved_cursor
 	GlobalPantsirSystem._selected_missile_tube_index = saved_selection
 	GlobalPantsirSystem._pending_missile_launch = saved_pending

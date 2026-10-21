@@ -71,7 +71,6 @@ title = "Панцирь-С1"
 subtitle = "Колёсное шасси КамАЗ-6560"
 photo = ExtResource("6_s1")
 photo_credit = "Фото: Boevaya mashina, CC BY-SA 4.0, Wikimedia Commons"
-work_in_progress = true
 
 [node name="PantsirSM" parent="Margin/Layout/Cards" instance=ExtResource("2_card")]
 layout_mode = 2
