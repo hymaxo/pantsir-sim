@@ -102,18 +102,19 @@ theme_override_font_sizes/font_size = 26
 text = "О Т К А З   О Т   О Т В Е Т С Т В Е Н Н О С Т И"
 horizontal_alignment = 1
 
-[node name="Russian" type="Label" parent="Disclaimer/Column"]
+[node name="Russian" type="RichTextLabel" parent="Disclaimer/Column"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.86, 0.88, 0.82, 1)
-theme_override_font_sizes/font_size = 20
-text = "Проект — любительская разработка, основанная исключительно на открытых данных. Он не имеет никакого отношения к Министерству обороны РФ, разработчику и производителям комплекса «Панцирь» (АО «КБП им. академика А. Г. Шипунова», Ульяновский механический завод, НИИП им. В. В. Тихомирова и другие предприятия, ОКБ и КБ) и не использует их служебные или закрытые материалы. Параметры комплексов условны: это игровая симуляция, а не точная модель реальной техники."
-horizontal_alignment = 1
-autowrap_mode = 3
-
+theme_override_colors/default_color = Color(0.86, 0.88, 0.82, 1)
+theme_override_font_sizes/normal_font_size = 20
+theme_override_font_sizes/bold_font_size = 20
+bbcode_enabled = true
+text = "[center]Проект — любительская разработка, основанная исключительно на открытых данных. Он [b]НЕ[/b] имеет никакого отношения к Министерству обороны РФ, разработчику и производителям комплекса «Панцирь» (АО «КБП им. академика А. Г. Шипунова», Ульяновский механический завод, НИИП им. В. В. Тихомирова и другие предприятия, ОКБ и КБ) и не использует их служебные или закрытые материалы. Параметры комплексов условны: это игровая симуляция, а не точная модель реальной техники.[/center]"
+fit_content = true
+scroll_active = false
 [node name="English" type="Label" parent="Disclaimer/Column"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.58, 0.52, 1)
 theme_override_font_sizes/font_size = 15
-text = "A hobby project based solely on open-source information. It has no connection to the Ministry of Defence of the Russian Federation or to the developer and manufacturers of the Pantsir system, and uses none of their internal or restricted materials."
+text = "A hobby project based solely on open-source information. It has NO connection to the Ministry of Defence of the Russian Federation or to the developer and manufacturers of the Pantsir system, and uses none of their internal or restricted materials."
 horizontal_alignment = 1
 autowrap_mode = 3

@@ -285,4 +285,4 @@ No license has been chosen — all rights are reserved by the project author. Th
 
 ## Disclaimer
 
-This is a hobby project based solely on open-source information. It has no connection whatsoever to the Ministry of Defence of the Russian Federation or to the developer and manufacturers of the Pantsir system (KBP Instrument Design Bureau named after A. G. Shipunov, Ulyanovsk Mechanical Plant, the Tikhomirov Scientific Research Institute of Instrument Design and other enterprises and design bureaus), and it uses none of their internal or restricted materials. Names of systems and products are used for identification only.
+This is a hobby project based solely on open-source information. It has **NO** connection whatsoever to the Ministry of Defence of the Russian Federation or to the developer and manufacturers of the Pantsir system (KBP Instrument Design Bureau named after A. G. Shipunov, Ulyanovsk Mechanical Plant, the Tikhomirov Scientific Research Institute of Instrument Design and other enterprises and design bureaus), and it uses none of their internal or restricted materials. Names of systems and products are used for identification only.
