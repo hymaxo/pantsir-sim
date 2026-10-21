@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3 uid="uid://dsvbwo3mry8cr"]
+
+[ext_resource type="Script" uid="uid://b40xf7yauo4ic" path="res://Scripts/PantsirMissile.gd" id="1_l6rx6"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_k48iq"]
+radius = 0.1
+height = 3.0
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_missile"]
+radius = 0.1
+height = 3.0
+
+[node name="PantsirMissile" type="CharacterBody3D"]
+script = ExtResource("1_l6rx6")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 0)
+mesh = SubResource("CapsuleMesh_k48iq")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 0)
+shape = SubResource("CapsuleShape3D_missile")

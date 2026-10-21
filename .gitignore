@@ -1,0 +1,18 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Local exports; release builds are produced by GitHub Actions.
+/build/
+/dist/
+
+# Editor scene backups and local debugging scripts.
+*.tmp
+/_tmp_*
+
+# Not for publication: internal notes, unused or unlicensed images, reference documents.
+/Docs/VRChat_Unity_Migration_Handoff.md
+/commbut.jpeg*
+/zenitnoraketnyii_kompleks_*
+*.pdf
+*.djvu

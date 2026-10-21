@@ -1,0 +1,17 @@
+[gd_scene load_steps=4 format=3 uid="uid://cxect0vxighso"]
+
+[ext_resource type="Script" uid="uid://boq228cjsg3db" path="res://Scripts/target.gd" id="1_t2jmu"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_e1yvt"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5ebp1"]
+
+[node name="Target" type="CharacterBody3D" groups=["radar_targets"]]
+script = ExtResource("1_t2jmu")
+
+[node name="New BoxMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0)
+mesh = SubResource("BoxMesh_e1yvt")
+
+[node name="New BoxShape3D" type="CollisionShape3D" parent="New BoxMesh"]
+shape = SubResource("BoxShape3D_5ebp1")

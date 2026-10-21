@@ -1,0 +1,105 @@
+name: Build
+
+# Every push and pull request is imported, tested and exported for Windows and
+# Linux; the builds are kept as run artifacts. A version tag (v1.2.3) also
+# publishes them as a GitHub Release.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore Godot
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-stable
+
+      - name: Download Godot and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          mkdir -p ~/godot && cd ~/godot
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip && rm godot.zip
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          # Keep only the templates the presets use; the full set is about 1 GB.
+          unzip -q templates.tpz "templates/version.txt" "templates/windows_release_x86_64*" "templates/linux_release.x86_64"
+          rm templates.tpz
+
+      - name: Install Godot
+        run: |
+          set -euo pipefail
+          templates_dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$templates_dir"
+          cp ~/godot/templates/* "$templates_dir/"
+          sudo ln -sf ~/godot/godot /usr/local/bin/godot
+          godot --headless --version
+
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "name=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=dev-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Import project
+        run: godot --headless --path . --import
+
+      - name: Missile physics tests
+        run: |
+          set -o pipefail
+          godot --headless --path . res://Tests/MissilePhysicsTest.tscn --quit-after 20000 2>&1 | tee test.log
+          grep -q "RESULT: PASS" test.log
+
+      - name: Export
+        run: |
+          set -euo pipefail
+          mkdir -p dist/windows dist/linux
+          godot --headless --path . --export-release "Windows Desktop" dist/windows/PantsirSim.exe
+          godot --headless --path . --export-release "Linux" dist/linux/PantsirSim.x86_64
+          test -f dist/windows/PantsirSim.exe && test -f dist/windows/PantsirSim.pck
+          test -f dist/linux/PantsirSim.x86_64 && test -f dist/linux/PantsirSim.pck
+          chmod +x dist/linux/PantsirSim.x86_64 dist/linux/*.sh 2>/dev/null || true
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.name }}"
+          cd dist
+          (cd windows && zip -qr "../PantsirSim-${version}-windows.zip" .)
+          (cd linux && zip -qr "../PantsirSim-${version}-linux.zip" .)
+          ls -la
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PantsirSim-${{ steps.version.outputs.name }}
+          path: dist/*.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Pantsir Simulator ${{ github.ref_name }}
+          # Hand-written notes for this version; the generated changelog follows.
+          body_path: .github/release-notes/${{ github.ref_name }}.md
+          files: dist/*.zip
+          generate_release_notes: true

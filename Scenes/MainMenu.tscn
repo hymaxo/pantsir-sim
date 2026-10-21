@@ -1,0 +1,119 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/main_menu.gd" id="1_menu"]
+[ext_resource type="PackedScene" path="res://Scenes/ComplexCard.tscn" id="2_card"]
+[ext_resource type="PackedScene" path="res://Scenes/SettingsMenu.tscn" id="3_settings"]
+[ext_resource type="Texture2D" path="res://Assets/Complexes/pantsir_sm.png" id="4_sm"]
+[ext_resource type="Theme" path="res://Resources/menu_theme.tres" id="5_theme"]
+[ext_resource type="Texture2D" path="res://Assets/Complexes/pantsir_s1.jpg" id="6_s1"]
+[ext_resource type="Texture2D" path="res://Assets/Complexes/pantsir_sm_sv.webp" id="7_smsv"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("5_theme")
+script = ExtResource("1_menu")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.09, 0.1, 0.08, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 80
+theme_override_constants/margin_top = 60
+theme_override_constants/margin_right = 80
+theme_override_constants/margin_bottom = 60
+
+[node name="Layout" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="Title" type="Label" parent="Margin/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.85, 0.25, 1)
+theme_override_font_sizes/font_size = 52
+text = "ЗРПК «ПАНЦИРЬ»"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Margin/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.68, 0.6, 1)
+theme_override_font_sizes/font_size = 20
+text = "Выберите комплекс"
+horizontal_alignment = 1
+
+[node name="Cards" type="HBoxContainer" parent="Margin/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 28
+alignment = 1
+
+[node name="PantsirS1" parent="Margin/Layout/Cards" instance=ExtResource("2_card")]
+layout_mode = 2
+complex_id = "S1"
+title = "Панцирь-С1"
+subtitle = "Колёсное шасси КамАЗ-6560"
+photo = ExtResource("6_s1")
+photo_credit = "Фото: Boevaya mashina, CC BY-SA 4.0, Wikimedia Commons"
+work_in_progress = true
+
+[node name="PantsirSM" parent="Margin/Layout/Cards" instance=ExtResource("2_card")]
+layout_mode = 2
+complex_id = "SM"
+title = "Панцирь-СМ"
+subtitle = "Колёсное шасси КамАЗ"
+photo = ExtResource("4_sm")
+
+[node name="PantsirSMSV" parent="Margin/Layout/Cards" instance=ExtResource("2_card")]
+layout_mode = 2
+complex_id = "SM-SV"
+title = "Панцирь-СМ-СВ"
+subtitle = "Колёсное шасси КамАЗ"
+photo = ExtResource("7_smsv")
+work_in_progress = true
+
+[node name="Buttons" type="HBoxContainer" parent="Margin/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="SettingsButton" type="Button" parent="Margin/Layout/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "НАСТРОЙКИ"
+
+[node name="PlayButton" type="Button" parent="Margin/Layout/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "ИГРАТЬ"
+
+[node name="QuitButton" type="Button" parent="Margin/Layout/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "ВЫХОД"
+
+[node name="SettingsMenu" parent="." instance=ExtResource("3_settings")]
+unique_name_in_owner = true
+layout_mode = 1

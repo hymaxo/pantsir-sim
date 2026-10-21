@@ -1,0 +1,235 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/spz_window.gd" id="1_window"]
+[ext_resource type="Script" path="res://Scripts/console_group.gd" id="2_group"]
+[ext_resource type="Script" path="res://Scripts/soc_sector_view.gd" id="3_sectors"]
+
+[sub_resource type="Gradient" id="Gradient_title"]
+colors = PackedColorArray(0, 0, 0.5, 1, 0.06, 0.52, 0.84, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_title"]
+gradient = SubResource("Gradient_title")
+width = 64
+height = 4
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_rcs"]
+
+[node name="SpzWindow" type="PanelContainer"]
+offset_left = 40.0
+offset_top = 60.0
+offset_right = 420.0
+offset_bottom = 300.0
+script = ExtResource("1_window")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TitleBar" type="TextureRect" parent="Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 13
+texture = SubResource("GradientTexture2D_title")
+expand_mode = 1
+
+[node name="Title" type="Label" parent="Layout/TitleBar"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "РУЧНАЯ НАСТРОЙКА"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CloseButton" type="Button" parent="Layout/TitleBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -21.0
+offset_top = 2.0
+offset_right = -3.0
+offset_bottom = -2.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_font_sizes/font_size = 10
+text = "X"
+
+[node name="Body" type="MarginContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="Rows" type="VBoxContainer" parent="Layout/Body"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SpeedRow" type="HBoxContainer" parent="Layout/Body/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SpeedLabel" type="Label" parent="Layout/Body/Rows/SpeedRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Ограничение по скорости"
+
+[node name="SpeedSpin" type="SpinBox" parent="Layout/Body/Rows/SpeedRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+max_value = 100.0
+step = 0.5
+value = 15.0
+suffix = "м/с"
+
+[node name="Middle" type="HBoxContainer" parent="Layout/Body/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LowerGroup" type="MarginContainer" parent="Layout/Body/Rows/Middle"]
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("2_group")
+title = "НИЖНЯЯ ГРАНИЦА"
+
+[node name="Grid" type="GridContainer" parent="Layout/Body/Rows/Middle/LowerGroup"]
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 4
+columns = 3
+
+[node name="HeightLabel" type="Label" parent="Layout/Body/Rows/Middle/LowerGroup/Grid"]
+layout_mode = 2
+text = "ВЫСОТА"
+
+[node name="HeightSpin" type="SpinBox" parent="Layout/Body/Rows/Middle/LowerGroup/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+max_value = 1000.0
+step = 10.0
+value = 50.0
+suffix = "м"
+
+[node name="HeightReset" type="Button" parent="Layout/Body/Rows/Middle/LowerGroup/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "СБРОС"
+
+[node name="AngleLabel" type="Label" parent="Layout/Body/Rows/Middle/LowerGroup/Grid"]
+layout_mode = 2
+text = "УГОЛ"
+
+[node name="AngleSpin" type="SpinBox" parent="Layout/Body/Rows/Middle/LowerGroup/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+max_value = 10.0
+step = 0.1
+suffix = "°"
+
+[node name="AngleReset" type="Button" parent="Layout/Body/Rows/Middle/LowerGroup/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "СБРОС"
+
+[node name="RcsGroup" type="MarginContainer" parent="Layout/Body/Rows/Middle"]
+layout_mode = 2
+script = ExtResource("2_group")
+title = "ПОРОГ ЭПР"
+
+[node name="Options" type="VBoxContainer" parent="Layout/Body/Rows/Middle/RcsGroup"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Rcs0" type="CheckBox" parent="Layout/Body/Rows/Middle/RcsGroup/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+button_group = SubResource("ButtonGroup_rcs")
+text = "0,0001 м²"
+
+[node name="Rcs1" type="CheckBox" parent="Layout/Body/Rows/Middle/RcsGroup/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+button_group = SubResource("ButtonGroup_rcs")
+text = "0,001 м²"
+
+[node name="Rcs2" type="CheckBox" parent="Layout/Body/Rows/Middle/RcsGroup/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+button_group = SubResource("ButtonGroup_rcs")
+text = "0,01 м²"
+
+[node name="UpperGroup" type="MarginContainer" parent="Layout/Body/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2_group")
+title = "ВЕРХНЯЯ ГРАНИЦА"
+
+[node name="Row" type="HBoxContainer" parent="Layout/Body/Rows/UpperGroup"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="UpperLabel" type="Label" parent="Layout/Body/Rows/UpperGroup/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ВЫСОТА"
+
+[node name="UpperSpin" type="SpinBox" parent="Layout/Body/Rows/UpperGroup/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+min_value = 500.0
+max_value = 20000.0
+step = 500.0
+value = 10000.0
+suffix = "м"
+
+[node name="UpperReset" type="Button" parent="Layout/Body/Rows/UpperGroup/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "СБРОС"
+
+[node name="SectorGroup" type="MarginContainer" parent="Layout/Body/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2_group")
+title = "СЕКЦИИ УМ"
+
+[node name="Column" type="VBoxContainer" parent="Layout/Body/Rows/SectorGroup"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SectorInfo" type="Label" parent="Layout/Body/Rows/SectorGroup/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="SectorView" type="Control" parent="Layout/Body/Rows/SectorGroup/Column"]
+custom_minimum_size = Vector2(0, 17)
+layout_mode = 2
+script = ExtResource("3_sectors")
+
+[node name="Bottom" type="HBoxContainer" parent="Layout/Body/Rows"]
+layout_mode = 2
+
+[node name="AutoCheck" type="CheckBox" parent="Layout/Body/Rows/Bottom"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "АВТОМАТИЧЕСКАЯ НАСТРОЙКА"
+
+[node name="ExitButton" type="Button" parent="Layout/Body/Rows/Bottom"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "ВЫХОД"

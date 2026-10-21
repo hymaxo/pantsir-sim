@@ -1,0 +1,18 @@
+[gd_scene load_steps=4 format=3 uid="uid://diji4amyjvimd"]
+
+[ext_resource type="PackedScene" uid="uid://cmmn8b75058xk" path="res://meshes/Drone_Lutiy.fbx" id="1_u3gdi"]
+[ext_resource type="Script" uid="uid://lh2m103y4qim" path="res://Scripts/Drone_Lutiy.gd" id="1_wnrjd"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wnrjd"]
+size = Vector3(23.829834, 17.950195, 26.198914)
+
+[node name="DroneLutiy" type="CharacterBody3D"]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0, 2.5128314, 0)
+script = ExtResource("1_wnrjd")
+
+[node name="Drone_Lutiy" parent="." instance=ExtResource("1_u3gdi")]
+transform = Transform3D(-1.4206201e-08, 0, 0.325, 0, 0.325, 0, -0.325, 0, -1.4206201e-08, 0, -5.2916565, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Drone_Lutiy"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.1705322, 13.125258, 0.13113403)
+shape = SubResource("BoxShape3D_wnrjd")

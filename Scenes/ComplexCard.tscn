@@ -1,0 +1,133 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/complex_card.gd" id="1_card"]
+[ext_resource type="Shader" path="res://Shaders/grayscale.gdshader" id="2_gray"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gray"]
+resource_local_to_scene = true
+shader = ExtResource("2_gray")
+shader_parameter/saturation = 0.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_photo_bg"]
+bg_color = Color(0.07, 0.08, 0.07, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wip"]
+bg_color = Color(0.78, 0.06, 0.06, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.85, 0.85, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 14.0
+content_margin_top = 4.0
+content_margin_right = 14.0
+content_margin_bottom = 4.0
+
+[node name="ComplexCard" type="PanelContainer"]
+custom_minimum_size = Vector2(400, 0)
+size_flags_horizontal = 3
+mouse_filter = 0
+script = ExtResource("1_card")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="PhotoFrame" type="Panel" parent="Layout"]
+custom_minimum_size = Vector2(0, 250)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_photo_bg")
+
+[node name="NoPhotoLabel" type="Label" parent="Layout/PhotoFrame"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.45, 0.47, 0.42, 1)
+text = "НЕТ ФОТО"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Photo" type="TextureRect" parent="Layout/PhotoFrame"]
+unique_name_in_owner = true
+material = SubResource("ShaderMaterial_gray")
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="CreditLabel" type="Label" parent="Layout/PhotoFrame"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -18.0
+offset_right = -4.0
+offset_bottom = -2.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 0.8)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 10
+horizontal_alignment = 2
+
+[node name="WipPlate" type="PanelContainer" parent="Layout/PhotoFrame"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -60.0
+offset_top = -24.0
+offset_right = 60.0
+offset_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+rotation = -0.17453292
+pivot_offset = Vector2(60, 24)
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_wip")
+
+[node name="WipLabel" type="Label" parent="Layout/PhotoFrame/WipPlate"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 30
+text = "WIP"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Title" type="Label" parent="Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.65, 0.58, 1)
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 1
+autowrap_mode = 3

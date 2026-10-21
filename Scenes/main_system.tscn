@@ -1,0 +1,216 @@
+[gd_scene format=3 uid="uid://db84ol2qi8y7n"]
+
+[ext_resource type="Script" uid="uid://dtk44rle3opu0" path="res://Scripts/MainSystem.gd" id="1_7elbo"]
+[ext_resource type="Script" uid="uid://btym7oni5oxdi" path="res://Scripts/RadarScanner.gd" id="2_3tfkf"]
+[ext_resource type="Texture2D" uid="uid://jodh42wxuk5o" path="res://stations/commander.png" id="3_7elbo"]
+[ext_resource type="Script" uid="uid://dxddlvb0hnffx" path="res://Scripts/c_screen.gd" id="4_o2oky"]
+[ext_resource type="PackedScene" uid="uid://cktmfrulgrgvj" path="res://Scenes/OScreen.tscn" id="5_3tfkf"]
+[ext_resource type="Texture2D" uid="uid://c26llg50l6uou" path="res://stations/bg.png" id="5_n0ncw"]
+[ext_resource type="Texture2D" uid="uid://bxfl4mnnyhp60" path="res://stations/cmbbx.jpeg" id="6_0fw1f"]
+[ext_resource type="Script" uid="uid://pw8vlwa1vjs5" path="res://Scripts/o_screen.gd" id="7_o2oky"]
+[ext_resource type="Script" uid="uid://bjx7uuucptk8l" path="res://Scripts/button.gd" id="7_wjjfu"]
+[ext_resource type="Script" uid="uid://co3mom3dnablj" path="res://Scenes/CreateRandomTarget.gd" id="11_0fw1f"]
+[ext_resource type="PackedScene" path="res://Scenes/Terrain.tscn" id="12_terrain"]
+[ext_resource type="PackedScene" path="res://Scenes/ReloadMenu.tscn" id="13_reload"]
+[ext_resource type="PackedScene" path="res://Scenes/SpzWindow.tscn" id="14_spz"]
+
+[sub_resource type="GDScript" id="GDScript_o2oky"]
+resource_name = "spawnHimars"
+script/source = "extends Button
+
+func _on_pressed() -> void:
+	GlobalPantsirSystem.spawn_himars_salvo()
+"
+
+[node name="MainSystem" type="Control" unique_id=1860616321]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_7elbo")
+
+[node name="SimulationCore" type="Node3D" parent="." unique_id=1614829675]
+
+[node name="VirtualWorld" type="SubViewport" parent="SimulationCore" unique_id=303390655]
+
+[node name="World3D" type="Node3D" parent="SimulationCore/VirtualWorld" unique_id=107156960]
+
+[node name="RadarScanner" type="Node3D" parent="SimulationCore/VirtualWorld/World3D" unique_id=561304929]
+script = ExtResource("2_3tfkf")
+
+[node name="LosRay" type="RayCast3D" parent="SimulationCore/VirtualWorld/World3D/RadarScanner" unique_id=1310641328]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -10, 0)
+
+[node name="Terrain" parent="SimulationCore/VirtualWorld/World3D" instance=ExtResource("12_terrain")]
+
+[node name="OmniLight3D" type="OmniLight3D" parent="SimulationCore/VirtualWorld/World3D" unique_id=819322452]
+light_energy = 999.0
+
+[node name="Stations" type="Control" parent="." unique_id=1150963115]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CommanderSeat" type="Control" parent="Stations" unique_id=1113557751]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="Stations/CommanderSeat" unique_id=470959784]
+
+[node name="Monitor" type="Control" parent="Stations/CommanderSeat"]
+clip_contents = true
+layout_mode = 1
+anchor_right = 0.7695
+anchor_bottom = 1.0
+grow_vertical = 2
+
+[node name="Bezel" type="TextureRect" parent="Stations/CommanderSeat/Monitor" unique_id=191346609]
+layout_mode = 1
+anchor_left = -0.0021
+anchor_top = 0.001
+anchor_right = 1.2962
+anchor_bottom = 1.491
+texture = ExtResource("3_7elbo")
+expand_mode = 1
+
+[node name="Screen" type="Control" parent="Stations/CommanderSeat/Monitor"]
+layout_mode = 1
+anchor_left = 0.0958
+anchor_top = 0.053
+anchor_right = 0.9446
+anchor_bottom = 0.91
+
+[node name="CScreen" type="Control" parent="Stations/CommanderSeat/Monitor/Screen" unique_id=1088925004]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4_o2oky")
+
+[node name="SpzWindow" parent="Stations/CommanderSeat/Monitor/Screen/CScreen" instance=ExtResource("14_spz")]
+unique_name_in_owner = true
+
+[node name="OScreen" parent="Stations/CommanderSeat/Monitor/Screen" unique_id=1821163745 instance=ExtResource("5_3tfkf")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+script = ExtResource("7_o2oky")
+
+[node name="ControlPanel" type="Control" parent="Stations/CommanderSeat"]
+clip_contents = true
+layout_mode = 1
+anchor_left = 0.7695
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="Background" type="TextureRect" parent="Stations/CommanderSeat/ControlPanel" unique_id=1076920622]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("5_n0ncw")
+expand_mode = 1
+
+[node name="Console" type="TextureRect" parent="Stations/CommanderSeat/ControlPanel" unique_id=276743857]
+layout_mode = 1
+anchor_left = 0.3014
+anchor_top = 0.075
+anchor_right = 0.8037
+anchor_bottom = 0.967
+texture = ExtResource("6_0fw1f")
+expand_mode = 1
+
+[node name="PowerButton" type="Button" parent="Stations/CommanderSeat/ControlPanel/Console" unique_id=1454599363]
+layout_mode = 1
+anchor_left = 0.0727
+anchor_top = -0.0011
+anchor_right = 0.45
+anchor_bottom = 0.1446
+tooltip_text = "ВКЛ"
+script = ExtResource("7_wjjfu")
+
+[node name="AutoFireButton" type="Button" parent="Stations/CommanderSeat/ControlPanel/Console"]
+layout_mode = 1
+anchor_left = 0.5136
+anchor_top = -0.0011
+anchor_right = 0.8909
+anchor_bottom = 0.1446
+tooltip_text = "АО"
+script = ExtResource("7_wjjfu")
+
+[node name="SectorRadarButton" type="Button" parent="Stations/CommanderSeat/ControlPanel/Console" unique_id=563530368]
+layout_mode = 1
+anchor_left = 0.0636
+anchor_top = 0.1502
+anchor_right = 0.4409
+anchor_bottom = 0.296
+tooltip_text = "ИЗЛ О"
+script = ExtResource("7_wjjfu")
+
+[node name="SearchRadarButton" type="Button" parent="Stations/CommanderSeat/ControlPanel/Console" unique_id=268559874]
+layout_mode = 1
+anchor_left = 0.5136
+anchor_top = 0.1446
+anchor_right = 0.8909
+anchor_bottom = 0.2904
+tooltip_text = "ИЗЛ-С"
+script = ExtResource("7_wjjfu")
+
+[node name="ReloadButton" type="Button" parent="Stations/CommanderSeat/ControlPanel"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.2877
+anchor_top = 0.345
+anchor_right = 0.8151
+anchor_bottom = 0.39
+theme_override_font_sizes/font_size = 14
+text = "ЗАПРОСИТЬ ПЕРЕЗАРЯДКУ"
+
+[node name="SpawnButtons" type="VBoxContainer" parent="Stations/CommanderSeat/ControlPanel"]
+layout_mode = 1
+anchor_left = 0.2877
+anchor_top = 0.562
+anchor_right = 0.8151
+anchor_bottom = 0.689
+theme_override_constants/separation = 1
+
+[node name="SpawnHimars" type="Button" parent="Stations/CommanderSeat/ControlPanel/SpawnButtons" unique_id=1511256234]
+layout_mode = 2
+size_flags_vertical = 3
+text = "ЗАЛП MLRS HIMARS"
+script = SubResource("GDScript_o2oky")
+
+[node name="RandTGT" type="Button" parent="Stations/CommanderSeat/ControlPanel/SpawnButtons" unique_id=427665576]
+layout_mode = 2
+size_flags_vertical = 3
+text = "ЗАСПАВНИТЬ РАНДОМНУЮ
+ ЦЕЛЬ"
+script = ExtResource("11_0fw1f")
+
+[node name="ReloadMenu" parent="." instance=ExtResource("13_reload")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/ReloadButton" to="." method="open_reload_menu"]
+[connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/Console/PowerButton" to="Stations/CommanderSeat/ControlPanel/Console/PowerButton" method="_on_pressed"]
+[connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/Console/AutoFireButton" to="Stations/CommanderSeat/ControlPanel/Console/AutoFireButton" method="_on_auto_fire_pressed"]
+[connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/Console/SectorRadarButton" to="Stations/CommanderSeat/ControlPanel/Console/SectorRadarButton" method="_on_button_soc_pressed"]
+[connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/Console/SearchRadarButton" to="Stations/CommanderSeat/ControlPanel/Console/SearchRadarButton" method="_on_button_scan_pressed"]
+[connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/SpawnButtons/SpawnHimars" to="Stations/CommanderSeat/ControlPanel/SpawnButtons/SpawnHimars" method="_on_pressed"]
+[connection signal="pressed" from="Stations/CommanderSeat/ControlPanel/SpawnButtons/RandTGT" to="Stations/CommanderSeat/ControlPanel/SpawnButtons/RandTGT" method="_on_pressed"]
